@@ -1,0 +1,11 @@
+# Keep this directory in git
+# Place your image assets here:
+# - Icons, logos, illustrations
+# - Product images, thumbnails
+# - Background images, patterns
+#
+# Supported formats: png, jpg, jpeg, gif, svg, webp
+#
+# Usage in components:
+# import imageName from './assets/images/image-name.png';
+# <img src={imageName} alt="Description" />

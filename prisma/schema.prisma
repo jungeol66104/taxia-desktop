@@ -1,0 +1,132 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "windows", "darwin", "darwin-arm64"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./taxia.db"
+}
+
+// Production-ready models with User, Subtask, and Message support
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // "admin", "user", "agent"
+  avatar    String?
+  tpCode    String?  // TP code for TP recording integration
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  calls     Call[]
+  messages  Message[]
+}
+
+model Client {
+  id                        String   @id @default(uuid())
+  companyName               String
+  representative            String
+  businessRegistrationNumber String
+  contactNumber             String
+  email                     String
+  address                   String
+  assignee                  String
+  contractDate              String
+  status                    String   @default("active") // active, inactive, contract_expired
+  notes                     String?
+  tpCode                    String?  // TP code for TP recording integration
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  // Relationships
+  calls                     Call[]
+  tasks                     Task[]
+  messages                  Message[]
+}
+
+model Call {
+  id                String    @id @default(uuid())
+  clientId          String?   // Optional foreign key
+  userId            String?   // Optional foreign key to caller/user
+  date              String
+  callerName        String
+  phoneNumber       String
+  recordingFileName String
+  callDuration      String
+  transcript        String?   // For OpenAI STT results
+  fileExists        Boolean   @default(true) // Track if recording file still exists on disk
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  client            Client?   @relation(fields: [clientId], references: [id])
+  user              User?     @relation(fields: [userId], references: [id])
+  tasks             Task[]
+  messages          Message[]
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  callId      String?   // Optional foreign key to Call
+  clientId    String?   // Optional foreign key to Client
+  title       String
+  assignee    String
+  status      String    @default("pending") // pending, in_progress, completed, on_hold
+  startDate   String
+  dueDate     String
+  progress    Int       @default(0) // 0-100
+  category    String
+  tags        String?   // JSON array as string
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relationships
+  call        Call?     @relation(fields: [callId], references: [id])
+  client      Client?   @relation(fields: [clientId], references: [id])
+  subtasks    Subtask[]
+  messages    Message[]
+}
+
+model Subtask {
+  id        String   @id @default(uuid())
+  taskId    String
+  title     String
+  assignee  String?
+  status    String   @default("pending") // pending, in_progress, completed
+  dueDate   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  userId    String
+  content   String
+  timestamp DateTime @default(now())
+  metadata  String?  // JSON string for additional data like candidate tasks
+
+  // Context - only one will be set (Slack approach)
+  taskId    String?
+  clientId  String?
+  callId    String?
+
+  user      User     @relation(fields: [userId], references: [id])
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  call      Call?    @relation(fields: [callId], references: [id], onDelete: Cascade)
+}
+
+model AppSettings {
+  id                   String   @id @default(uuid())
+  key                  String   @unique
+  value                String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
